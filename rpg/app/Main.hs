@@ -1,6 +1,9 @@
 module Main where
 
 import Lib
+import Game (createPlayer)
 
 main :: IO ()
-main = someFunc
+main = do
+  player <- createPlayer
+  print player

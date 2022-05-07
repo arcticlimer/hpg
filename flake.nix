@@ -20,10 +20,10 @@
 
             rnix-lsp
           ];
-          nativeBuildInputs = [
-            pkg-config
-            gmp
-          ];
+          # nativeBuildInputs = [
+          #   pkg-config
+          #   gmp
+          # ];
         };
       });
 }
