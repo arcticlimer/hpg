@@ -1,4 +1,3 @@
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Game (main) where
@@ -22,9 +21,9 @@ data Player = Player
   deriving (Show)
 
 data Enemy = Enemy
-  { hp :: Int,
-    atk :: Int,
-    name :: String
+  { eHp :: Int,
+    eAtk :: Int,
+    eName :: String
   }
   deriving (Show)
 
@@ -45,16 +44,41 @@ ask message prompt parser = do
 
 data UserAction = Attack | Block
 
-attack :: a -> b -> Maybe b
-attack = undefined
+class Fighter a where
+  takeDamage :: Int -> a -> Maybe a
+  getDamage :: a -> Int
+
+instance Fighter Enemy where
+  takeDamage dmg enemy = if life > 0 then Just enemy else Nothing
+    where
+      life = eHp $ decreaseEnemyHealth dmg enemy
+  getDamage = eAtk
+
+instance Fighter Player where
+  takeDamage dmg player = if life > 0 then Just player else Nothing
+    where
+      life = hp $ decreasePlayerHealth dmg player
+  getDamage = atk
+
+decreaseEnemyHealth :: Int -> Enemy -> Enemy
+decreaseEnemyHealth v e = e {eHp = eHp e - v}
+
+decreasePlayerHealth :: Int -> Player -> Player
+decreasePlayerHealth v p = p {hp = hp p - v}
+
+attack :: Fighter f => Fighter g => f -> g -> Maybe g
+attack f1 = takeDamage (getDamage f1)
 
 fight :: Player -> Enemy -> IO (Either Enemy Player)
 fight player enemy = do
   action <- ask "Take your action (attack/block)" prompt parsePlayerAction
   let result = player `attack` enemy
+  putStrLn "You have hit the enemy!"
+
+  -- TODO: Log enemy hit before it happens
   case result of
     Just hittedEnemy -> case enemy `attack` player of
-      Just hittedEnemy_ -> fight player hittedEnemy
+      Just hittedPlayer -> putStrLn "Enemy hit you!" >> fight hittedPlayer hittedEnemy
       Nothing -> pure $ Left enemy
     Nothing -> pure $ Right player
 
@@ -107,7 +131,7 @@ createEnemy = do
   let (atk, _) = randomR (20, 30) ng :: (Int, StdGen)
   pure $
     Enemy
-      { hp,
-        atk,
-        name = "Enemy"
+      { eHp = hp,
+        eAtk = atk,
+        eName = "Enemy"
       }
