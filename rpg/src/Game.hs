@@ -4,7 +4,7 @@ module Game (main) where
 
 import Data.Char (toLower)
 import System.IO
-import System.Random (Random (randomR, randoms), RandomGen (genRange), StdGen, newStdGen, randomIO)
+import System.Random (Random (randomR), StdGen, newStdGen)
 import Text.Printf (printf)
 import Text.Read (readMaybe)
 
