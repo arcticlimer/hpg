@@ -1,10 +1,11 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Game (createPlayer, createEnemy) where
+module Game (main) where
 
 import Data.Char (toLower)
 import System.IO
+import System.Random (Random (randomR, randoms), RandomGen (genRange), StdGen, newStdGen, randomIO)
 import Text.Printf (printf)
 import Text.Read (readMaybe)
 
@@ -14,39 +15,80 @@ data PlayerClass = Mage | Warrior | Archer
 data Player = Player
   { hp :: Int,
     mp :: Int,
+    atk :: Int,
     name :: String,
-    _class :: PlayerClass
+    cls :: PlayerClass
   }
   deriving (Show)
 
 data Enemy = Enemy
   { hp :: Int,
+    atk :: Int,
     name :: String
   }
   deriving (Show)
+
+prompt = " -> "
 
 printNoLn :: String -> IO ()
 printNoLn a = do
   putStr a
   hFlush stdout
 
-prompt = "-> "
-
 ask :: String -> String -> (String -> Maybe a) -> IO a
 ask message prompt parser = do
-  printNoLn $ printf "%s %s" message prompt
+  printNoLn $ printf "%s%s" message prompt
   line <- getLine
   maybe recurse return (parser line)
   where
     recurse = ask message prompt parser
+
+data UserAction = Attack | Block
+
+attack :: a -> b -> Maybe b
+attack = undefined
+
+fight :: Player -> Enemy -> IO (Either Enemy Player)
+fight player enemy = do
+  action <- ask "Take your action (attack/block)" prompt parsePlayerAction
+  let result = player `attack` enemy
+  case result of
+    Just hittedEnemy -> case enemy `attack` player of
+      Just hittedEnemy_ -> fight player hittedEnemy
+      Nothing -> pure $ Left enemy
+    Nothing -> pure $ Right player
+
+parsePlayerAction :: String -> Maybe UserAction
+parsePlayerAction input = case lower of
+  "attack" -> Just Attack
+  "block" -> Just Block
+  _ -> Nothing
+  where
+    lower = toLower <$> input
+
+main :: IO ()
+main = do
+  player <- createPlayer
+  enemy <- createEnemy
+  winner <- startBattle player enemy
+  let msg = case winner of
+        Left _enemy -> "Enemy wins the fight, game over..."
+        Right _player -> "You won the fight!"
+  putStrLn msg
+
+startBattle :: Player -> Enemy -> IO (Either Enemy Player)
+startBattle p e =
+  putStrLn "You have encountered an enemy! The battle has begun!"
+    >> fight p e
 
 createPlayer :: IO Player
 createPlayer = do
   hp <- ask "Player HP" prompt readMaybe
   mp <- ask "Player MP" prompt readMaybe
   name <- ask "Player Name" prompt Just
-  _class <- ask "Player class" prompt parsePlayerClass
-  pure $ Player {hp, mp, name, _class}
+  atk <- ask "Player attack points" prompt readMaybe
+  cls <- ask "Player class" prompt parsePlayerClass
+  pure $ Player {hp, mp, name, cls, atk}
 
 parsePlayerClass :: String -> Maybe PlayerClass
 parsePlayerClass s =
@@ -56,11 +98,16 @@ parsePlayerClass s =
     "archer" -> Just Archer
     _ -> Nothing
   where
-    lower = map toLower s
+    lower = toLower <$> s
 
-createEnemy :: Enemy
-createEnemy =
-  Enemy
-    { hp = 100,
-      name = "Foo"
-    }
+createEnemy :: IO Enemy
+createEnemy = do
+  g <- newStdGen
+  let (hp, ng) = randomR (100, 150) g :: (Int, StdGen)
+  let (atk, _) = randomR (20, 30) ng :: (Int, StdGen)
+  pure $
+    Enemy
+      { hp,
+        atk,
+        name = "Enemy"
+      }
